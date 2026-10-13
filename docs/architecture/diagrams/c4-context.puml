@@ -1,0 +1,134 @@
+@startuml
+!define C4P https://c4model.com/palette/
+!define C4U https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/puzzles/
+
+' Configuración del estilo C4
+Scale 500 width 900 height
+
+' Configuración de colores y estilos
+skinparam backgroundColor white
+skinparam componentBackgroundColor lightgray
+skinparam componentBorderColor black
+skinparam folderBackgroundColor lightyellow
+skinparam shadowing false
+
+' ====================
+' CONTEXT DIAGRAM NIVEL 1 (C4)
+' ====================
+
+title Sky Fussion Analytics - Contexto del Sistema (Nivel 1)
+
+' === ACTORES EXTERNOS ===
+Person(user, "Geospatial Analyst", "Analiza datos satelitales y visualiza resultados mediante la interfaz")
+Person(operator, "System Operator", "Opera y monitorea la plataforma Sky Fussion Analytics")
+Person(dev, "Developer", "Desarrolla e mantiene los componentes del sistema")
+Person(satelliteProvider, "Satellite Data Provider", "Provee datos satelitales brutos y metadatos de imagen")
+
+' === COMPONENTES DEL SISTEMA ===
+
+' Frontend/Client
+App clientApp "Frontend (React)" "Interfaz de usuario, visualización y consumo de APIs"
+
+' Backend Services
+' Node.js backend
+Node nodeAPI "Backend Node.js API" "Manejo de endpoints, LLM integration, Neo4j operations, Authentication"
+
+' .NET backend  
+Node dotnetAPI "Backend .NET Core" "Lógica de negocio central, procesamiento de solicitudes, validación, seguridad"
+
+' Python ML Pipeline
+Py mlPipeline "Python ML Pipeline" "Inferencia de modelos, procesamiento de imágenes satelitales, generación de resultados"
+
+' Agent Orchestrator
+Agent agentOrchestrator "Agent Orchestrator" "Orquestación de tareas distribuidas (prediction-agent, reporting-agent, analysis-agent)"
+
+' Databases
+Database neo4j "Neo4j" "Base de datos de grafo - Relaciones espaciales y conexiones entre entidades"
+Database sqlDB "SQL Server / EF" "Datos transaccionales, usuarios, configuraciones"
+Database jsonStore "JSON File Store" "Metadatos ligeros, configuraciones, caché"
+
+' ===== RELACIONES CON ACTORES =====
+
+' Satellite Data Provider -> System
+satelliteProvider --> satelliteDataProvider
+
+' Geospatial Analyst -> Frontend
+user --> clientApp
+operator --> clientApp
+
+' Developer -> Backends
+dev --> nodeAPI
+dev --> dotnetAPI
+
+' === RELACIONES INTERNAS DEL SISTEMA ===
+
+' Cliente → Node.js API
+clientApp -> nodeAPI "HTTPS (REST API)"
+
+' Cliente → .NET API  
+clientApp -> dotnetAPI "HTTPS (REST API)"
+
+' Node.js API → Python ML Pipeline
+nodeAPI -> mlPipeline "Mensajería (RabbitMQ / Kafka)"
+
+' Node.js API → Agent Orchestrator
+nodeAPI -> agentOrchestrator "Mensajería"
+
+' .NET API → SQL Database
+dotnetAPI -> sqlDB "ADO.NET / Entity Framework"
+
+' .NET API → Neo4j
+dotnetAPI -> neo4j "Driver Neo4j"
+
+' Python ML Pipeline → Neo4j
+mlPipeline -> neo4j "py2neo / Neo4j Driver"
+
+' Python ML Pipeline → JSON Store
+mlPipeline -> jsonStore "File system operations"
+
+' Agent Orchestrator → SQL Database
+agentOrchestrator -> sqlDB "Dapper / Ado.NET"
+
+' Agent Orchestrator → JSON Store
+agentOrchestrator -> jsonStore "File system operations'
+
+' Neo4j → .NET API
+neo4j -> dotnetAPI "Cypher queries"
+
+' SQL Database → .NET API
+sqlDB -> dotnetAPI "Queries'
+
+' JSON Store → Agent Orchestrator
+jsonStore -> agentOrchestrator "Lectura de archivos"
+
+' ===== FLOWS DE DATOS =====
+
+' Satellite Data Provider → System (ingestión)
+satelliteProvider --> clientApp "Nuevos datos satelitales disponibles"
+satelliteProvider --> nodeAPI "Metadatos y status de entrega"
+
+' Geospatial Analyst flow: User solicita análisis
+clientApp --> mlPipeline "Solicitud de análisis de imagen"
+clientApp --> nodeAPI "Consulta de resultados previos"
+clientApp --> dotnetAPI "Configuración y perfiles de usuario"
+
+' Operador flow
+operator --> nodeAPI "Monitoreo de salud del sistema"
+operator --> agentOrchestrator "Estado de tareas agentes'
+
+' Developer flow
+dev --> nodeAPI "Despliegue y debugging"
+dev --> dotnetAPI "Despliegue y debugging'
+
+' === INTEGRACIÓN LLM ===
+nodeapiLLMLabel = "LLM Integration"
+nodeAPI -> "Servicio LLM externo" "API calls (OpenAI, Anthropic, etc.)" "HTTPS"
+
+' ===== LEYENDA =====
+legend right
+    C4_Person = Person
+    C4_SoftwareSystem = App / Node / Py / Agent / Database
+    C4_Database = Database
+end legend
+
+@enduml

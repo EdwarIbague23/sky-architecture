@@ -1,0 +1,104 @@
+@startuml
+' Configuración de estilo
+scale 800 width 1200
+
+skinparam backgroundColor transparent
+skinparam componentBackgroundColor transparent
+skinparam sequenceArrowThick 1.5
+skinparam participantMargin 40
+skinparam maxBandWidth 300
+
+title Sky Fussion Analytics - Flujo de Análisis Satelital Transaccional
+
+' === ACTORES ===
+actor "Geospatial Analyst" as analyst
+actor "User" as user
+
+' === COMPONENTES DEL SISTEMA ===
+rectangle "Frontend Application\n(React)" as frontend {
+    skinparam rectangle {
+        backgroundColor lightblue
+    }
+}
+
+rectangle "Backend Node.js API" as nodeBackend {
+    skinparam rectangle {
+        backgroundColor lightgreen
+    }
+}
+
+rectangle "Backend .NET Core" as dotnetBackend {
+    skinparam rectangle {
+        backgroundColor orange
+    }
+}
+
+rectangle "Python ML Pipeline" as mlPipeline {
+    skinparam rectangle {
+        backgroundColor lightyellow
+    }
+}
+
+rectangle "Agent Orchestrator" as orchestrator {
+    skinparam rectangle {
+        backgroundColor pink
+    }
+}
+
+database "Neo4j" as neo4j {
+    skinparam databaseBackgroundColor lightgray
+}
+
+database "SQL Server" as sqlDb {
+    skinparam databaseBackgroundColor lightgray
+}
+
+' === FLUJO TRANSACTIONAL DE ANÁLISIS SATELITAL ===
+
+' === PASO 1: Usuario solicita análisis ===
+user -> analyst: Solicita análisis de imagen satelital
+analyst -> frontend: Inicia solicitud través de UI
+frontend -> frontend: Valida entrada y carga config
+
+' === PASO 2: Frontend envía request al Node.js API ===
+frontend -> nodeBackend: POST /api/analysis/request
+activate nodeBackend
+note right of nodeBackend: Validar autenticación, rate limiting, payload
+
+' === PASO 3: Node.js encola tarea al Orchestrator ===
+nodeBackend -> orchestrator: Encola tarea "analysis-{id}"
+activate orchestrator
+note right of orchestrator: Persistir en Neo4j, notificar Python Pipeline
+
+' === PASO 4: Python ML Pipeline ejecuta inferencia ===
+orchestrator -> mlPipeline: Ejecutar inferencia de modelo
+activate mlPipeline
+note right of mlPipeline: Cargar imagen, preprocesar, ejecutar modelo
+
+' === PASO 5: Resultados a Neo4j y SQL ===
+mlPipeline -> neo4j: Almacenar resultados y metadatos espaciales
+mlPipeline -> sqlDb: Registrar transacción de análisis
+deactivate mlPipeline
+
+' === PASO 6: Neo4j retorna datos al .NET API ===
+neo4j -> dotnetBackend: Datos de análisis (grafo/relaciones)
+activate dotnetBackend
+note right of dotnetBackend: Enriquecer con contexto relacional
+
+' === PASO 7: .NET API responde al Frontend ===
+dotnetBackend -> frontend: POST response {analysis results}
+deactivate dotnetBackend
+
+' === PASO 8: Frontend muestra resultados ===
+frontend -> user: Mostrar reporte visual con hallazgos
+frontend -> analyst: Interfaz interactiva de resultados
+
+' === LIMPIEZA ===
+user -> analyst: Completa análisis o solicita nuevo
+
+' === DESACTIVACIÓN ===
+deactivate frontend
+deactivate nodeBackend
+deactivate orchestrator
+
+@enduml
